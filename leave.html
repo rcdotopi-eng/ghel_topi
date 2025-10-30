@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Leave Application - SSMK Ghel Topi</title>
+<style>
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #f0f4f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+h1 {
+  color: #1e3a8a;
+}
+form {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  width: 320px;
+}
+input, select, textarea, button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  font-size: 15px;
+}
+button {
+  background: #1e40af;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover {
+  background: #1d4ed8;
+}
+footer {
+  margin-top: 40px;
+  color: #777;
+  font-size: 14px;
+}
+.hidden {
+  display: none;
+}
+</style>
+</head>
+<body>
+
+<h1>📝 Leave Application</h1>
+
+<form id="leaveForm">
+  <input type="text" id="name" placeholder="Your Full Name" required>
+  <input type="text" id="designation" placeholder="Designation (e.g. SST, PST)" required>
+
+  <label>Leave From:</label>
+  <input type="date" id="fromDate" required>
+
+  <label>Leave To:</label>
+  <input type="date" id="toDate" required>
+
+  <label>Reason for Leave:</label>
+  <select id="reasonSelect" required onchange="toggleOtherReason()">
+    <option value="">-- Select Reason --</option>
+    <option value="personal work">Personal Work</option>
+    <option value="illness">Illness / Medical Leave</option>
+    <option value="family emergency">Family Emergency</option>
+    <option value="official duty">Official Duty</option>
+    <option value="urgent work">Urgent Work</option>
+    <option value="other">Other (Specify Below)</option>
+  </select>
+
+  <textarea id="otherReason" class="hidden" placeholder="Enter other reason..." rows="2"></textarea>
+
+  <button type="button" onclick="generatePDF()">Generate PDF</button>
+</form>
+
+<footer>© 2025 IT Center Ghel Topi</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+function toggleOtherReason() {
+  const select = document.getElementById('reasonSelect');
+  const other = document.getElementById('otherReason');
+  other.classList.toggle('hidden', select.value !== 'other');
+}
+
+function generatePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const name = document.getElementById('name').value.trim();
+  const designation = document.getElementById('designation').value.trim();
+  const fromDate = document.getElementById('fromDate').value;
+  const toDate = document.getElementById('toDate').value;
+  const selectedReason = document.getElementById('reasonSelect').value;
+  const otherReason = document.getElementById('otherReason').value.trim();
+
+  let reason = selectedReason === 'other' ? otherReason : selectedReason;
+
+  if(!name || !designation || !fromDate || !toDate || !reason){
+    alert("Please fill all fields.");
+    return;
+  }
+
+  const today = new Date().toLocaleDateString();
+
+  doc.setFont("times", "normal");
+  doc.setFontSize(14);
+  doc.text("To,", 20, 30);
+  doc.text("The Headmaster,", 20, 40);
+  doc.text("Sardar Shah Mohammad Khan Late", 20, 50);
+  doc.text("Govt. Boys High School Ghel Topi, Bagh.", 20, 60);
+
+  doc.text(`Date: ${today}`, 140, 30);
+  doc.text("Subject: Application for Leave", 20, 80);
+
+  doc.text(`Respected Sir,`, 20, 95);
+  doc.text(
+    `I, ${name}, serving as ${designation}, respectfully request leave from ${fromDate} to ${toDate} due to ${reason}. Kindly grant me leave for the mentioned days.`,
+    20, 110, { maxWidth: 170, align: "justify" }
+  );
+
+  doc.text("Thanking you in anticipation.", 20, 160);
+  doc.text("Yours obediently,", 20, 175);
+  doc.text(`${name}`, 20, 185);
+  doc.text(`${designation}`, 20, 195);
+
+  doc.save(`Leave_Application_${name}.pdf`);
+}
+</script>
+
+</body>
+</html>
