@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Leave Application - Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh</title>
+<title>Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh — Staff Payslip Portal</title>
 <style>
   body {
     font-family: "Segoe UI", Arial, sans-serif;
@@ -15,43 +15,35 @@
   header {
     background-color: #004aad;
     color: white;
-    padding: 20px 10px;
+    padding: 20px 10px 10px;
     box-shadow: 0 3px 6px rgba(0,0,0,0.15);
   }
-  header a {
-    color: #fff;
-    text-decoration: none;
-    margin-left: 20px;
-    font-size: 15px;
+  header img {
+    width: 90px;
+    border-radius: 50%;
+    margin-bottom: 10px;
   }
-  header a:hover {
-    text-decoration: underline;
+  h1 {
+    margin: 5px 0;
+    font-size: 1.8em;
   }
-  form {
-    background: white;
-    max-width: 450px;
-    margin: 50px auto;
-    padding: 25px;
-    border-radius: 10px;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-  }
-  label {
-    display: block;
-    margin-top: 15px;
-    font-weight: bold;
+  p {
     color: #333;
   }
-  input, select, textarea {
-    width: 100%;
+  h2 {
+    color: #004aad;
+    margin-top: 50px;
+  }
+  input {
     padding: 10px;
-    font-size: 15px;
+    font-size: 16px;
+    width: 220px;
     border: 1px solid #ccc;
     border-radius: 6px;
-    margin-top: 5px;
   }
   button {
-    margin-top: 20px;
-    padding: 10px 25px;
+    padding: 10px 20px;
+    margin-left: 10px;
     font-size: 16px;
     background-color: #004aad;
     color: white;
@@ -63,109 +55,77 @@
   button:hover {
     background-color: #00337a;
   }
+  #msg {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+  }
   footer {
-    margin-top: 50px;
+    margin-top: 80px;
     background-color: #f1f1f1;
     padding: 15px;
     font-size: 14px;
     color: #555;
+  }
+  /* Navbar styles */
+  nav {
+    background-color: #003b8e;
+    padding: 10px 0;
+  }
+  nav a {
+    color: white;
+    text-decoration: none;
+    margin: 0 15px;
+    font-weight: 500;
+    transition: 0.3s;
+  }
+  nav a:hover {
+    text-decoration: underline;
   }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>📝 Leave Application Portal</h1>
-  <p>Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh</p>
-  <a href="index.html">🏠 Back to Payslip Portal</a>
+  <img src="logo.png" alt="School Logo" onerror="this.style.display='none'">
+  <h1>Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh</h1>
+  <p>🏫 Official Staff Payslip Portal</p>
 </header>
 
-<form id="leaveForm">
-  <h2>Apply for Leave</h2>
+<nav>
+  <a href="index.html">🏠 Home</a>
+  <a href="leave.html">📝 Apply for Leave</a>
+</nav>
 
-  <label for="name">Full Name:</label>
-  <input type="text" id="name" placeholder="Enter your full name" required>
+<h2>Enter Your Personal Number</h2>
+<p>Please enter your staff personal number to view your payslip securely.</p>
 
-  <label for="designation">Designation:</label>
-  <select id="designation" required>
-    <option value="">-- Select --</option>
-    <option value="EST">EST</option>
-    <option value="PET">PET</option>
-    <option value="SST">SST</option>
-  </select>
+<input type="text" id="pnum" placeholder="e.g. 90048454">
+<button onclick="openPayslip()">View Payslip</button>
+<p id="msg"></p>
 
-  <label for="fromDate">From Date:</label>
-  <input type="date" id="fromDate" required>
-
-  <label for="toDate">To Date:</label>
-  <input type="date" id="toDate" required>
-
-  <label for="reason">Reason for Leave:</label>
-  <select id="reason" required>
-    <option value="">-- Select Reason --</option>
-    <option value="Medical Leave">Medical Leave</option>
-    <option value="Casual Leave">Casual Leave</option>
-    <option value="Urgent Personal Work">Urgent Personal Work</option>
-    <option value="Family Function">Family Function</option>
-    <option value="Other">Other</option>
-  </select>
-
-  <button type="button" onclick="generatePDF()">Generate PDF</button>
-</form>
-
-<footer>© 2025 IT Center Ghel Topi</footer>
-
-<!-- jsPDF for generating the PDF -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-async function generatePDF() {
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-
-  const name = document.getElementById("name").value;
-  const designation = document.getElementById("designation").value;
-  const fromDate = document.getElementById("fromDate").value;
-  const toDate = document.getElementById("toDate").value;
-  const reason = document.getElementById("reason").value;
-
-  if (!name || !designation || !fromDate || !toDate || !reason) {
-    alert("⚠️ Please fill in all fields.");
+function openPayslip() {
+  const num = document.getElementById('pnum').value.trim();
+  const msg = document.getElementById('msg');
+  msg.innerText = "";
+  if (!num) {
+    msg.innerText = "⚠️ Please enter your personal number.";
     return;
   }
-
-  const today = new Date().toLocaleDateString();
-
-  doc.setFont("times", "normal");
-  doc.setFontSize(14);
-  doc.text("To,", 20, 30);
-  doc.text("The Headmaster,", 20, 40);
-  doc.text("Sardar Shah Mohammad Khan Late Govt. Boys High School,", 20, 50);
-  doc.text("Ghel Topi, Bagh.", 20, 60);
-
-  doc.text(`Date: ${today}`, 140, 60);
-  doc.text("Subject: Application for Leave", 20, 80);
-
-  doc.text(`Respected Sir,`, 20, 100);
-  doc.text(
-    `I, ${name} (${designation}), request leave from ${fromDate} to ${toDate} due to ${reason}.`,
-    20,
-    115,
-    { maxWidth: 170 }
-  );
-  doc.text(
-    "Kindly grant me the leave for the mentioned period. I shall be thankful to you.",
-    20,
-    135,
-    { maxWidth: 170 }
-  );
-
-  doc.text("Yours obediently,", 20, 160);
-  doc.text(`${name}`, 20, 175);
-  doc.text(`${designation}`, 20, 185);
-
-  doc.save(`Leave_Application_${name}.pdf`);
+  const url = 'payslips/' + num + '.pdf';
+  fetch(url).then(r => {
+    if (r.ok) {
+      window.open(url, '_blank');
+    } else {
+      msg.innerText = "❌ Payslip not found. Please check your number.";
+    }
+  }).catch(() => {
+    msg.innerText = "⚠️ Error opening payslip. Please try again.";
+  });
 }
 </script>
 
+<footer>© 2025 IT Center Ghel Topi</footer>
 </body>
 </html>
