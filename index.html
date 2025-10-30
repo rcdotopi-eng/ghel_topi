@@ -4,85 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh — Staff Payslip Portal</title>
-<style>
-  body {
-    font-family: "Segoe UI", Arial, sans-serif;
-    background: linear-gradient(180deg, #f9fbfc, #e6eef7);
-    text-align: center;
-    margin: 0;
-    padding: 0;
-  }
-  header {
-    background-color: #004aad;
-    color: white;
-    padding: 20px 10px 10px;
-    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-  }
-  header img {
-    width: 90px;
-    border-radius: 50%;
-    margin-bottom: 10px;
-  }
-  h1 {
-    margin: 5px 0;
-    font-size: 1.8em;
-  }
-  p {
-    color: #333;
-  }
-  h2 {
-    color: #004aad;
-    margin-top: 50px;
-  }
-  input {
-    padding: 10px;
-    font-size: 16px;
-    width: 220px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-  }
-  button {
-    padding: 10px 20px;
-    margin-left: 10px;
-    font-size: 16px;
-    background-color: #004aad;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: 0.3s;
-  }
-  button:hover {
-    background-color: #00337a;
-  }
-  #msg {
-    color: red;
-    font-weight: bold;
-    margin-top: 10px;
-  }
-  footer {
-    margin-top: 80px;
-    background-color: #f1f1f1;
-    padding: 15px;
-    font-size: 14px;
-    color: #555;
-  }
-  /* Navbar styles */
-  nav {
-    background-color: #003b8e;
-    padding: 10px 0;
-  }
-  nav a {
-    color: white;
-    text-decoration: none;
-    margin: 0 15px;
-    font-weight: 500;
-    transition: 0.3s;
-  }
-  nav a:hover {
-    text-decoration: underline;
-  }
-</style>
+
+<!-- External CSS -->
+<link rel="stylesheet" href="style.css">
+
 </head>
 <body>
 
@@ -97,6 +22,15 @@
   <a href="leave.html">📝 Apply for Leave</a>
 </nav>
 
+<!-- 🔔 Notices Section -->
+<section id="notices-section">
+  <h2>📢 Important Notices</h2>
+  <ul id="notices-list">
+    <li>Loading latest notices...</li>
+  </ul>
+</section>
+
+<!-- Payslip Viewer -->
 <h2>Enter Your Personal Number</h2>
 <p>Please enter your staff personal number to view your payslip securely.</p>
 
@@ -104,27 +38,8 @@
 <button onclick="openPayslip()">View Payslip</button>
 <p id="msg"></p>
 
-<script>
-function openPayslip() {
-  const num = document.getElementById('pnum').value.trim();
-  const msg = document.getElementById('msg');
-  msg.innerText = "";
-  if (!num) {
-    msg.innerText = "⚠️ Please enter your personal number.";
-    return;
-  }
-  const url = 'payslips/' + num + '.pdf';
-  fetch(url).then(r => {
-    if (r.ok) {
-      window.open(url, '_blank');
-    } else {
-      msg.innerText = "❌ Payslip not found. Please check your number.";
-    }
-  }).catch(() => {
-    msg.innerText = "⚠️ Error opening payslip. Please try again.";
-  });
-}
-</script>
+<!-- External JS -->
+<script src="script.js"></script>
 
 <footer>© 2025 IT Center Ghel Topi</footer>
 </body>
