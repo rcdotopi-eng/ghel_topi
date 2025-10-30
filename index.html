@@ -65,7 +65,7 @@
     border-radius: 12px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     padding: 40px;
-    max-width: 420px;
+    max-width: 400px;
     text-align: center;
   }
 
@@ -128,7 +128,6 @@
     margin-top: auto;
   }
 
-  /* Modal styling */
   .modal {
     display: none;
     position: fixed;
@@ -180,7 +179,7 @@
 <div class="container">
   <div class="box">
     <h2>View Your Payslip</h2>
-    <p>Enter your staff number and select month to view your payslip securely.</p>
+    <p>Please enter your staff personal number and select month to view your payslip securely.</p>
 
     <input type="text" id="pnum" placeholder="e.g. 90048454">
     <br>
@@ -191,6 +190,7 @@
       <option value="10">October 2025</option>
     </select>
     <br>
+
     <button onclick="openPayslip()">View Payslip</button>
     <br>
     <button class="notice-btn" onclick="showNotice()">📢 View Notice</button>
@@ -233,7 +233,7 @@ function openPayslip() {
       msg.innerText = "❌ Payslip not found for the selected month.";
     }
   }).catch(() => {
-    msg.innerText = "⚠️ Error loading payslip. Please try again.";
+    msg.innerText = "⚠️ Error opening payslip. Please try again.";
   });
 }
 
@@ -252,6 +252,5 @@ window.onclick = function(event) {
   }
 };
 </script>
-
 </body>
 </html>
