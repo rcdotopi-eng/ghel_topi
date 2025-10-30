@@ -2,108 +2,134 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Leave Application - SSMK Ghel Topi</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leave Application - Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh</title>
 <style>
-body {
-  font-family: 'Segoe UI', sans-serif;
-  background: #f0f4f8;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-}
-h1 {
-  color: #1e3a8a;
-}
-form {
-  background: white;
-  padding: 25px;
-  border-radius: 10px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
-  width: 320px;
-}
-input, select, textarea, button {
-  width: 100%;
-  margin-top: 10px;
-  padding: 10px;
-  font-size: 15px;
-}
-button {
-  background: #1e40af;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-button:hover {
-  background: #1d4ed8;
-}
-footer {
-  margin-top: 40px;
-  color: #777;
-  font-size: 14px;
-}
-.hidden {
-  display: none;
-}
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: linear-gradient(180deg, #f9fbfc, #e6eef7);
+    text-align: center;
+    margin: 0;
+    padding: 0;
+  }
+  header {
+    background-color: #004aad;
+    color: white;
+    padding: 20px 10px;
+    box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+  }
+  header a {
+    color: #fff;
+    text-decoration: none;
+    margin-left: 20px;
+    font-size: 15px;
+  }
+  header a:hover {
+    text-decoration: underline;
+  }
+  form {
+    background: white;
+    max-width: 450px;
+    margin: 50px auto;
+    padding: 25px;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+    color: #333;
+  }
+  input, select, textarea {
+    width: 100%;
+    padding: 10px;
+    font-size: 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-top: 5px;
+  }
+  button {
+    margin-top: 20px;
+    padding: 10px 25px;
+    font-size: 16px;
+    background-color: #004aad;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s;
+  }
+  button:hover {
+    background-color: #00337a;
+  }
+  footer {
+    margin-top: 50px;
+    background-color: #f1f1f1;
+    padding: 15px;
+    font-size: 14px;
+    color: #555;
+  }
 </style>
 </head>
 <body>
 
-<h1>📝 Leave Application</h1>
+<header>
+  <h1>📝 Leave Application Portal</h1>
+  <p>Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh</p>
+  <a href="index.html">🏠 Back to Payslip Portal</a>
+</header>
 
 <form id="leaveForm">
-  <input type="text" id="name" placeholder="Your Full Name" required>
-  <input type="text" id="designation" placeholder="Designation (e.g. SST, PST)" required>
+  <h2>Apply for Leave</h2>
 
-  <label>Leave From:</label>
-  <input type="date" id="fromDate" required>
+  <label for="name">Full Name:</label>
+  <input type="text" id="name" placeholder="Enter your full name" required>
 
-  <label>Leave To:</label>
-  <input type="date" id="toDate" required>
-
-  <label>Reason for Leave:</label>
-  <select id="reasonSelect" required onchange="toggleOtherReason()">
-    <option value="">-- Select Reason --</option>
-    <option value="personal work">Personal Work</option>
-    <option value="illness">Illness / Medical Leave</option>
-    <option value="family emergency">Family Emergency</option>
-    <option value="official duty">Official Duty</option>
-    <option value="urgent work">Urgent Work</option>
-    <option value="other">Other (Specify Below)</option>
+  <label for="designation">Designation:</label>
+  <select id="designation" required>
+    <option value="">-- Select --</option>
+    <option value="EST">EST</option>
+    <option value="PET">PET</option>
+    <option value="SST">SST</option>
   </select>
 
-  <textarea id="otherReason" class="hidden" placeholder="Enter other reason..." rows="2"></textarea>
+  <label for="fromDate">From Date:</label>
+  <input type="date" id="fromDate" required>
+
+  <label for="toDate">To Date:</label>
+  <input type="date" id="toDate" required>
+
+  <label for="reason">Reason for Leave:</label>
+  <select id="reason" required>
+    <option value="">-- Select Reason --</option>
+    <option value="Medical Leave">Medical Leave</option>
+    <option value="Casual Leave">Casual Leave</option>
+    <option value="Urgent Personal Work">Urgent Personal Work</option>
+    <option value="Family Function">Family Function</option>
+    <option value="Other">Other</option>
+  </select>
 
   <button type="button" onclick="generatePDF()">Generate PDF</button>
 </form>
 
 <footer>© 2025 IT Center Ghel Topi</footer>
 
+<!-- jsPDF for generating the PDF -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
-function toggleOtherReason() {
-  const select = document.getElementById('reasonSelect');
-  const other = document.getElementById('otherReason');
-  other.classList.toggle('hidden', select.value !== 'other');
-}
-
-function generatePDF() {
+async function generatePDF() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
-  const name = document.getElementById('name').value.trim();
-  const designation = document.getElementById('designation').value.trim();
-  const fromDate = document.getElementById('fromDate').value;
-  const toDate = document.getElementById('toDate').value;
-  const selectedReason = document.getElementById('reasonSelect').value;
-  const otherReason = document.getElementById('otherReason').value.trim();
+  const name = document.getElementById("name").value;
+  const designation = document.getElementById("designation").value;
+  const fromDate = document.getElementById("fromDate").value;
+  const toDate = document.getElementById("toDate").value;
+  const reason = document.getElementById("reason").value;
 
-  let reason = selectedReason === 'other' ? otherReason : selectedReason;
-
-  if(!name || !designation || !fromDate || !toDate || !reason){
-    alert("Please fill all fields.");
+  if (!name || !designation || !fromDate || !toDate || !reason) {
+    alert("⚠️ Please fill in all fields.");
     return;
   }
 
@@ -113,22 +139,29 @@ function generatePDF() {
   doc.setFontSize(14);
   doc.text("To,", 20, 30);
   doc.text("The Headmaster,", 20, 40);
-  doc.text("Sardar Shah Mohammad Khan Late", 20, 50);
-  doc.text("Govt. Boys High School Ghel Topi, Bagh.", 20, 60);
+  doc.text("Sardar Shah Mohammad Khan Late Govt. Boys High School,", 20, 50);
+  doc.text("Ghel Topi, Bagh.", 20, 60);
 
-  doc.text(`Date: ${today}`, 140, 30);
+  doc.text(`Date: ${today}`, 140, 60);
   doc.text("Subject: Application for Leave", 20, 80);
 
-  doc.text(`Respected Sir,`, 20, 95);
+  doc.text(`Respected Sir,`, 20, 100);
   doc.text(
-    `I, ${name}, serving as ${designation}, respectfully request leave from ${fromDate} to ${toDate} due to ${reason}. Kindly grant me leave for the mentioned days.`,
-    20, 110, { maxWidth: 170, align: "justify" }
+    `I, ${name} (${designation}), request leave from ${fromDate} to ${toDate} due to ${reason}.`,
+    20,
+    115,
+    { maxWidth: 170 }
+  );
+  doc.text(
+    "Kindly grant me the leave for the mentioned period. I shall be thankful to you.",
+    20,
+    135,
+    { maxWidth: 170 }
   );
 
-  doc.text("Thanking you in anticipation.", 20, 160);
-  doc.text("Yours obediently,", 20, 175);
-  doc.text(`${name}`, 20, 185);
-  doc.text(`${designation}`, 20, 195);
+  doc.text("Yours obediently,", 20, 160);
+  doc.text(`${name}`, 20, 175);
+  doc.text(`${designation}`, 20, 185);
 
   doc.save(`Leave_Application_${name}.pdf`);
 }
