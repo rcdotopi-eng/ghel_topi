@@ -64,11 +64,6 @@
     color: #004aad;
     margin-bottom: 15px;
   }
-  .box p {
-    color: #333;
-    font-size: 15px;
-    margin-bottom: 20px;
-  }
   input, select {
     padding: 10px;
     font-size: 16px;
@@ -90,6 +85,13 @@
   button:hover {
     background-color: #00337a;
   }
+  .notice-btn {
+    background-color: #009688;
+    margin-top: 10px;
+  }
+  .notice-btn:hover {
+    background-color: #00796b;
+  }
   #msg {
     color: red;
     font-weight: bold;
@@ -102,6 +104,37 @@
     font-size: 14px;
     color: #555;
     margin-top: auto;
+  }
+  /* Popup Notice Modal */
+  .modal {
+    display: none;
+    position: fixed;
+    z-index: 999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+  }
+  .modal-content {
+    background-color: white;
+    margin: 10% auto;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .close {
+    color: #555;
+    float: right;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .close:hover {
+    color: black;
   }
 </style>
 </head>
@@ -121,10 +154,10 @@
 <div class="container">
   <div class="box">
     <h2>View Your Payslip</h2>
-    <p>Please enter your staff personal number and select month to download your payslip.</p>
+    <p>Please enter your staff personal number and select the month.</p>
 
-    <input type="text" id="pnum" placeholder="Enter your personal number e.g. 90048454">
-
+    <input type="text" id="pnum" placeholder="Enter Personal Number (e.g. 90048454)">
+    <br>
     <select id="month">
       <option value="">Select Month</option>
       <option value="01">January</option>
@@ -140,22 +173,33 @@
       <option value="11">November</option>
       <option value="12">December</option>
     </select>
+    <br>
 
-    <button onclick="openMonthlyPayslip()">📄 Download Payslip</button>
+    <button onclick="downloadPayslip()">📄 Download Payslip</button>
+    <br>
+    <button class="notice-btn" onclick="showNotice()">📢 View Notice</button>
 
     <p id="msg"></p>
+  </div>
+</div>
+
+<!-- Notice Modal -->
+<div id="noticeModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeNotice()">&times;</span>
+    <h3>📢 Important Notice</h3>
+    <p id="noticeText">Today, 30 October 2025, is Play Day after 3rd period.</p>
   </div>
 </div>
 
 <footer>© 2025 IT Center Ghel Topi</footer>
 
 <script>
-function openMonthlyPayslip() {
+function downloadPayslip() {
   const num = document.getElementById('pnum').value.trim();
-  const month = document.getElementById('month').value;
+  const month = document.getElementById('month').value.trim();
   const msg = document.getElementById('msg');
   msg.innerText = "";
-
   if (!num) {
     msg.innerText = "⚠️ Please enter your personal number.";
     return;
@@ -176,7 +220,19 @@ function openMonthlyPayslip() {
     msg.innerText = "⚠️ Error opening payslip. Please try again.";
   });
 }
-</script>
 
+function showNotice() {
+  document.getElementById("noticeModal").style.display = "block";
+}
+function closeNotice() {
+  document.getElementById("noticeModal").style.display = "none";
+}
+window.onclick = function(event) {
+  const modal = document.getElementById("noticeModal");
+  if (event.target === modal) {
+    modal.style.display = "none";
+  }
+};
+</script>
 </body>
 </html>
