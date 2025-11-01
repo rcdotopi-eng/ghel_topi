@@ -7,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
   budgetSection.innerHTML = `
     <hr style="margin: 20px 0;">
     <h3>📊 Monthly Budget Summary</h3>
-    <p>Select a month to generate the school’s combined budget summary (from uploaded payslips).</p>
+    <p>Select a month to generate the school’s combined budget summary.</p>
     <select id="budgetMonth" style="padding: 10px; width: 80%; border-radius: 6px; margin-bottom: 10px;">
       <option value="">Select Month</option>
       <option value="01">January</option>
