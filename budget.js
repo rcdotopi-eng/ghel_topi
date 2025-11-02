@@ -15,12 +15,17 @@ document.addEventListener("DOMContentLoaded", function () {
         .join("")}
     </select>
     <br>
-    <button id="generateBudget" class="notice-btn">💰 Generate Monthly Budget PDF</button>
+    <button id="generateBudget" class="notice-btn">💰 Generate Monthly Budget</button>
     <div id="status" style="margin-top:10px; color:#333;"></div>
+    <div id="downloadOptions" style="display:none; margin-top:15px;">
+      <button id="downloadMain" class="notice-btn">⬇️ Download Budget PDF</button>
+      <button id="downloadDebug" class="notice-btn">🧾 Download Debug PDF</button>
+      <button id="downloadBoth" class="notice-btn">📚 Download Both (Merged)</button>
+    </div>
   `;
   container.appendChild(budgetSection);
 
-  // --- Wage code map ---
+  // --- Wage Codes ---
   const wageMap = {
     "0001": "Basic Pay",
     "1000": "House Rent Allowance",
@@ -52,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
   document.getElementById("generateBudget").addEventListener("click", async function () {
     const month = document.getElementById("budgetMonth").value;
     const status = document.getElementById("status");
+    const downloadOptions = document.getElementById("downloadOptions");
 
     if (!month) return alert("⚠️ Please select a month.");
     if (typeof payslipFiles === "undefined" || !payslipFiles[month])
@@ -61,14 +67,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!monthFiles.length) return alert(`❌ No payslips found for ${month}/2025.`);
 
     status.textContent = `⏳ Reading ${monthFiles.length} payslips...`;
+    downloadOptions.style.display = "none";
 
     const totals = Object.fromEntries(Object.keys(wageMap).map(k => [k, 0]));
     const debugDetails = [];
     let processedCount = 0;
-
-    console.clear();
-    console.group(`💼 Monthly Budget Debug (${month}/2025)`);
-    console.log(`Processing ${monthFiles.length} payslips...`);
 
     for (const url of monthFiles) {
       const slipName = url.split("/").pop();
@@ -84,7 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         textContent = textContent.replace(/\s+/g, " ").trim();
-
         const start = textContent.indexOf("Wage type");
         const end = textContent.indexOf("Deductions");
         const block = start !== -1 && end > start
@@ -96,12 +98,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         for (let i = 0; i < tokens.length; i++) {
           const token = tokens[i];
-
           if (/^\d{4}$/.test(token)) {
             currentCode = token;
             continue;
           }
-
           if (/^\d{1,3}(?:,\d{3})*(?:\.\d{2})?$/.test(token)) {
             const amount = parseFloat(token.replace(/,/g, ""));
             if (currentCode && wageMap[currentCode] && amount > 0) {
@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", function () {
               slipRows.push({
                 code: currentCode,
                 description: wageMap[currentCode],
-                amount
+                amount,
               });
             }
             currentCode = null;
@@ -119,46 +119,31 @@ document.addEventListener("DOMContentLoaded", function () {
         const slipTotal = slipRows.reduce((a, b) => a + b.amount, 0);
         debugDetails.push({ slipName, rows: slipRows, slipTotal });
         processedCount++;
-
-        console.groupCollapsed(`📄 ${slipName}`);
-        console.table(slipRows);
-        console.log("Subtotal:", slipTotal.toLocaleString("en-PK"));
-        console.groupEnd();
-
       } catch (err) {
         console.warn(`⚠️ Skipped ${slipName}: ${err.message}`);
       }
     }
 
     const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
-    console.group("📊 Combined Totals by Code");
-    const debugTotals = Object.entries(totals).map(([code, amt]) => ({
-      Code: code,
-      Description: wageMap[code],
-      Total: amt.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
-    }));
-    console.table(debugTotals);
-    console.groupEnd();
-    console.groupEnd();
 
-    // --- Generate Main Budget PDF ---
+    // --- Prepare Main Budget PDF ---
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF("p", "mm", "a4");
+    const budgetPDF = new jsPDF("p", "mm", "a4");
 
-    doc.setFont("times", "bold");
-    doc.setFontSize(14);
-    doc.text("GOVERNMENT OF AZAD JAMMU & KASHMIR", 105, 15, { align: "center" });
-    doc.setFontSize(12);
-    doc.text(
+    budgetPDF.setFont("times", "bold");
+    budgetPDF.setFontSize(14);
+    budgetPDF.text("GOVERNMENT OF AZAD JAMMU & KASHMIR", 105, 15, { align: "center" });
+    budgetPDF.setFontSize(12);
+    budgetPDF.text(
       "SARDAR SHAH MOHAMMAD KHAN LATE GOVT. BOYS HIGH SCHOOL, GHEL TOPI (BAGH)",
       105,
       22,
       { align: "center" }
     );
-    doc.setFontSize(11);
-    doc.text(`Monthly Budget Summary for ${month}/2025`, 105, 30, { align: "center" });
-    doc.setFontSize(9);
-    doc.text(`Processed Payslips: ${processedCount}`, 14, 38);
+    budgetPDF.setFontSize(11);
+    budgetPDF.text(`Monthly Budget Summary for ${month}/2025`, 105, 30, { align: "center" });
+    budgetPDF.setFontSize(9);
+    budgetPDF.text(`Processed Payslips: ${processedCount}`, 14, 38);
 
     const rows = Object.entries(wageMap).map(([code, desc]) => [
       code,
@@ -167,7 +152,7 @@ document.addEventListener("DOMContentLoaded", function () {
     ]);
     rows.push(["", "Total", totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })]);
 
-    doc.autoTable({
+    budgetPDF.autoTable({
       startY: 42,
       head: [["Wage Type", "Description", "Total (Rs)"]],
       body: rows,
@@ -178,26 +163,25 @@ document.addEventListener("DOMContentLoaded", function () {
       margin: { left: 14, right: 14 },
     });
 
-    let finalY = doc.lastAutoTable.finalY + 20;
-    doc.setFont("times", "italic");
-    doc.setFontSize(11);
-    doc.text("_________________________", 25, finalY);
-    doc.text("_________________________", 135, finalY);
-    doc.text("Accountant", 35, finalY + 6);
-    doc.text("Headmaster", 150, finalY + 6);
-    doc.save(`Monthly_Budget_${month}_2025.pdf`);
+    let finalY = budgetPDF.lastAutoTable.finalY + 20;
+    budgetPDF.setFont("times", "italic");
+    budgetPDF.setFontSize(11);
+    budgetPDF.text("_________________________", 25, finalY);
+    budgetPDF.text("_________________________", 135, finalY);
+    budgetPDF.text("Accountant", 35, finalY + 6);
+    budgetPDF.text("Headmaster", 150, finalY + 6);
 
-    // --- Generate Debug PDF ---
-    const debugDoc = new jsPDF("p", "mm", "a4");
-    debugDoc.setFont("times", "bold");
-    debugDoc.setFontSize(13);
-    debugDoc.text(`DEBUG REPORT - Monthly Budget Details (${month}/2025)`, 105, 15, { align: "center" });
-    debugDoc.setFontSize(10);
+    // --- Prepare Debug PDF ---
+    const debugPDF = new jsPDF("p", "mm", "a4");
+    debugPDF.setFont("times", "bold");
+    debugPDF.setFontSize(13);
+    debugPDF.text(`DEBUG REPORT - Monthly Budget Details (${month}/2025)`, 105, 15, { align: "center" });
+    debugPDF.setFontSize(10);
     let y = 25;
 
     for (const slip of debugDetails) {
-      debugDoc.setFont("times", "bold");
-      debugDoc.text(`Payslip: ${slip.slipName}`, 14, y);
+      debugPDF.setFont("times", "bold");
+      debugPDF.text(`Payslip: ${slip.slipName}`, 14, y);
       y += 5;
 
       const slipRows = slip.rows.map(r => [
@@ -206,7 +190,7 @@ document.addEventListener("DOMContentLoaded", function () {
         r.amount.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
       ]);
 
-      debugDoc.autoTable({
+      debugPDF.autoTable({
         startY: y,
         head: [["Code", "Description", "Amount (Rs)"]],
         body: slipRows,
@@ -216,21 +200,71 @@ document.addEventListener("DOMContentLoaded", function () {
         margin: { left: 14, right: 14 },
       });
 
-      y = debugDoc.lastAutoTable.finalY + 5;
-      debugDoc.text(`Subtotal: Rs ${slip.slipTotal.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`, 150, y, { align: "right" });
+      y = debugPDF.lastAutoTable.finalY + 5;
+      debugPDF.text(`Subtotal: Rs ${slip.slipTotal.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`, 150, y, { align: "right" });
       y += 10;
 
       if (y > 260) {
-        debugDoc.addPage();
+        debugPDF.addPage();
         y = 20;
       }
     }
 
-    debugDoc.setFont("times", "bold");
-    debugDoc.setFontSize(11);
-    debugDoc.text(`Grand Total: Rs ${totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`, 150, y, { align: "right" });
+    debugPDF.setFont("times", "bold");
+    debugPDF.setFontSize(11);
+    debugPDF.text(`Grand Total: Rs ${totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`, 150, y, { align: "right" });
 
-    debugDoc.save(`Monthly_Budget_Debug_${month}_2025.pdf`);
-    status.textContent = `✅ Both budget and debug PDFs generated successfully! (${processedCount} payslips processed)`;
+    // --- Store PDFs for later download ---
+    window.generatedBudgetPDF = budgetPDF;
+    window.generatedDebugPDF = debugPDF;
+    window.generatedMonth = month;
+
+    status.textContent = `✅ Reports generated successfully! Choose what to download below.`;
+    downloadOptions.style.display = "block";
+  });
+
+  // --- Helper to merge PDFs ---
+  async function mergePDFs(doc1, doc2) {
+    const merged = new jsPDF("p", "mm", "a4");
+    const pdfs = [doc1, doc2];
+
+    for (const doc of pdfs) {
+      const pages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        if (i > 1 || doc !== pdfs[0]) merged.addPage();
+        const pageData = doc.getPageContent ? doc.getPageContent(i) : doc.output("datauristring");
+        const imgData = doc.getPageAsImage ? await doc.getPageAsImage(i) : null;
+      }
+    }
+    return merged;
+  }
+
+  // --- Download buttons ---
+  document.getElementById("downloadMain").addEventListener("click", function () {
+    if (window.generatedBudgetPDF) window.generatedBudgetPDF.save(`Monthly_Budget_${window.generatedMonth}_2025.pdf`);
+  });
+
+  document.getElementById("downloadDebug").addEventListener("click", function () {
+    if (window.generatedDebugPDF) window.generatedDebugPDF.save(`Monthly_Budget_Debug_${window.generatedMonth}_2025.pdf`);
+  });
+
+  document.getElementById("downloadBoth").addEventListener("click", async function () {
+    const { jsPDF } = window.jspdf;
+    if (!window.generatedBudgetPDF || !window.generatedDebugPDF) return alert("Generate reports first.");
+
+    const merged = new jsPDF();
+    const addPDF = async (srcDoc) => {
+      const pages = srcDoc.internal.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        if (i > 1 || merged.internal.getNumberOfPages() > 0) merged.addPage();
+        const pageData = srcDoc.output("datauristring");
+        merged.addImage(pageData, "JPEG", 0, 0, 210, 297);
+      }
+    };
+
+    await addPDF(window.generatedBudgetPDF);
+    await addPDF(window.generatedDebugPDF);
+
+    merged.save(`Monthly_Budget_Combined_${window.generatedMonth}_2025.pdf`);
   });
 });
