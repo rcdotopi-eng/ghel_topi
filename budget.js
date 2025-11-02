@@ -1,13 +1,13 @@
 document.addEventListener("DOMContentLoaded", function () {
   const container = document.querySelector(".box");
 
-  // --- Budget Section ---
+  // --- Add Budget Section ---
   const budgetSection = document.createElement("div");
-  budgetSection.style.marginTop = "20px";
+  budgetSection.style.marginTop = "25px";
   budgetSection.innerHTML = `
     <hr style="margin: 20px 0;">
     <h3>📊 Monthly Budget Summary</h3>
-    <p>Select a month to generate the school’s combined budget summary.</p>
+    <p>Select a month to generate the school’s combined budget summary (official format).</p>
     <select id="budgetMonth" style="padding: 10px; width: 80%; border-radius: 6px; margin-bottom: 10px;">
       <option value="">Select Month</option>
       <option value="01">January</option>
@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", function () {
   `;
   container.appendChild(budgetSection);
 
-  // --- Wage Codes ---
+  // --- Wage Map ---
   const wageMap = {
     "0001": "Basic Pay",
     "1000": "House Rent Allowance",
@@ -53,84 +53,115 @@ document.addEventListener("DOMContentLoaded", function () {
     "2420": "Disparity Reduction Allowance 30% (2025)"
   };
 
-  // Load PDF.js
+  // --- Load PDF.js ---
   const pdfjsLib = window["pdfjs-dist/build/pdf"];
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
-  // --- Main process ---
+  // --- Generate Budget PDF ---
   document.getElementById("generateBudget").addEventListener("click", async function () {
     const month = document.getElementById("budgetMonth").value;
     const status = document.getElementById("status");
 
     if (!month) {
-      alert("Please select a month!");
+      alert("⚠️ Please select a month first.");
       return;
     }
 
     const monthFiles = payslipFiles[month];
     if (!monthFiles || monthFiles.length === 0) {
-      alert(`No payslip files found for month ${month}.`);
+      alert(`❌ No payslip files defined for month ${month}.`);
       return;
     }
 
-    status.textContent = `Processing ${monthFiles.length} payslips... please wait.`;
+    status.textContent = `⏳ Processing ${monthFiles.length} payslips... please wait.`;
 
     const totals = {};
     for (const code in wageMap) totals[code] = 0;
 
-    // --- Loop through all payslip URLs ---
+    let processedCount = 0;
+    let skippedCount = 0;
+
     for (const url of monthFiles) {
-      const pdf = await pdfjsLib.getDocument(url).promise;
-      let textContent = "";
+      try {
+        const pdf = await pdfjsLib.getDocument(url).promise;
+        let textContent = "";
 
-      for (let i = 1; i <= pdf.numPages; i++) {
-        const page = await pdf.getPage(i);
-        const text = await page.getTextContent();
-        text.items.forEach((t) => (textContent += t.str + " "));
-      }
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const text = await page.getTextContent();
+          text.items.forEach((t) => (textContent += t.str + " "));
+        }
 
-      const regex = /(\d{4})\s+[A-Za-z().%/ ]+?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
-      let match;
-      while ((match = regex.exec(textContent)) !== null) {
-        const code = match[1];
-        const amount = parseFloat(match[2].replace(/,/g, ""));
-        if (wageMap[code]) totals[code] += amount;
+        const regex = /(\d{4})\s+[A-Za-z().%/ ]+?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
+        let match;
+        while ((match = regex.exec(textContent)) !== null) {
+          const code = match[1];
+          const amount = parseFloat(match[2].replace(/,/g, ""));
+          if (wageMap[code]) totals[code] += amount;
+        }
+
+        processedCount++;
+      } catch (err) {
+        skippedCount++;
+        console.warn(`⚠️ Skipped ${url}: ${err.message}`);
       }
     }
 
-    // --- Generate final PDF ---
+    // --- Create PDF ---
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const doc = new jsPDF('p', 'mm', 'a4');
 
-    const data = Object.entries(wageMap).map(([code, desc]) => [
+    // --- Header ---
+    doc.setFont('times', 'bold');
+    doc.setFontSize(14);
+    doc.text("GOVERNMENT OF AZAD JAMMU & KASHMIR", 105, 15, { align: "center" });
+    doc.setFontSize(12);
+    doc.text("SARDAR SHAH MOHAMMAD KHAN LATE GOVT. BOYS HIGH SCHOOL, GHEL TOPI (BAGH)", 105, 22, { align: "center" });
+    doc.setFontSize(11);
+    doc.text(`Monthly Budget Summary for ${month}/2025`, 105, 30, { align: "center" });
+
+    // --- Process Info ---
+    doc.setFontSize(9);
+    doc.text(`Processed Payslips: ${processedCount} | Skipped: ${skippedCount}`, 14, 38);
+
+    // --- Table Data ---
+    const rows = Object.entries(wageMap).map(([code, desc]) => [
       code,
       desc,
       totals[code] ? totals[code].toLocaleString("en-PK", { minimumFractionDigits: 2 }) : "0.00",
     ]);
 
-    const grandTotal = Object.values(totals).reduce((a, b) => a + b, 0);
+    const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
+    rows.push(["", "Total", totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })]);
 
-    const tableData = [
-      ...data,
-      ["", "Total", grandTotal.toLocaleString("en-PK", { minimumFractionDigits: 2 })],
-    ];
-
-    doc.setFontSize(14);
-    doc.text("Sardar Shah Mohammad Khan Late Govt. Boys High School Ghel Topi, Bagh", 14, 15);
-    doc.setFontSize(12);
-    doc.text(`Monthly Budget Summary — Month ${month} (Combined Payslips)`, 14, 25);
-
+    // --- Table ---
     doc.autoTable({
-      startY: 35,
+      startY: 42,
       head: [["Wage Type", "Description", "Total (Rs)"]],
-      body: tableData,
+      body: rows,
       theme: "grid",
-      headStyles: { fillColor: [0, 74, 173] },
-      styles: { halign: "center", valign: "middle" },
+      styles: { font: "times", fontSize: 10, halign: "center", valign: "middle" },
+      headStyles: { fillColor: [0, 74, 173], textColor: 255, fontStyle: "bold" },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 110, halign: "left" },
+        2: { cellWidth: 40, halign: "right" }
+      },
+      margin: { left: 14, right: 14 },
     });
 
+    // --- Footer: Signatures ---
+    let finalY = doc.lastAutoTable.finalY + 20;
+    doc.setFont('times', 'italic');
+    doc.setFontSize(11);
+    doc.text("_________________________", 25, finalY);
+    doc.text("_________________________", 135, finalY);
+    doc.text("Accountant", 35, finalY + 6);
+    doc.text("Headmaster", 150, finalY + 6);
+
+    // --- Save PDF ---
     doc.save(`Monthly_Budget_${month}_2025.pdf`);
-    status.textContent = "✅ Budget PDF generated successfully!";
+    status.textContent = `✅ Budget generated successfully! (${processedCount} processed, ${skippedCount} skipped)`;
   });
 });
