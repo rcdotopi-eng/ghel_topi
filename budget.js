@@ -75,7 +75,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let monthFiles = [];
     try {
-      monthFiles = await fetchPayslipList(month);
+     monthFiles = payslipFiles[month] || [];
+
     } catch (e) {
       console.warn("⚠️ Could not fetch directory listing.", e);
     }
