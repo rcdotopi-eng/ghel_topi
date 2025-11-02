@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
   const container = document.querySelector(".box");
 
-  // --- Budget section ---
+  // --- UI Section ---
   const budgetSection = document.createElement("div");
   budgetSection.style.marginTop = "25px";
   budgetSection.innerHTML = `
@@ -10,27 +10,17 @@ document.addEventListener("DOMContentLoaded", function () {
     <p>Select a month to generate the school’s combined budget summary.</p>
     <select id="budgetMonth" style="padding: 10px; width: 80%; border-radius: 6px; margin-bottom: 10px;">
       <option value="">Select Month</option>
-      <option value="01">January</option>
-      <option value="02">February</option>
-      <option value="03">March</option>
-      <option value="04">April</option>
-      <option value="05">May</option>
-      <option value="06">June</option>
-      <option value="07">July</option>
-      <option value="08">August</option>
-      <option value="09">September</option>
-      <option value="10">October</option>
-      <option value="11">November</option>
-      <option value="12">December</option>
+      ${["01","02","03","04","05","06","07","08","09","10","11","12"]
+        .map(m => `<option value="${m}">${new Date(2000, m-1).toLocaleString('default', { month: 'long' })}</option>`)
+        .join("")}
     </select>
     <br>
     <button id="generateBudget" class="notice-btn">💰 Generate Monthly Budget PDF</button>
-    <button id="downloadDebug" class="notice-btn" style="margin-left:8px; display:none;">📥 Download Debug JSON</button>
     <div id="status" style="margin-top:10px; color:#333;"></div>
   `;
   container.appendChild(budgetSection);
 
-  // --- Allowed wage codes ---
+  // --- Wage code map ---
   const wageMap = {
     "0001": "Basic Pay",
     "1000": "House Rent Allowance",
@@ -54,18 +44,15 @@ document.addEventListener("DOMContentLoaded", function () {
     "2420": "Disparity Reduction Allowance 30% (2025)"
   };
 
-  // --- Load PDF.js ---
+  // --- PDF.js setup ---
   const pdfjsLib = window["pdfjs-dist/build/pdf"];
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
-  // debug download button
-  const downloadDebugBtn = document.getElementById("downloadDebug");
-
   document.getElementById("generateBudget").addEventListener("click", async function () {
     const month = document.getElementById("budgetMonth").value;
     const status = document.getElementById("status");
-    downloadDebugBtn.style.display = "none";
+
     if (!month) return alert("⚠️ Please select a month.");
     if (typeof payslipFiles === "undefined" || !payslipFiles[month])
       return alert("❌ Payslip file list not found.");
@@ -75,24 +62,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
     status.textContent = `⏳ Reading ${monthFiles.length} payslips...`;
 
-    // Initialize totals and debug collectors
-    const totals = {};
-    for (const code in wageMap) totals[code] = 0;
-
-    const debug = {
-      month,
-      files: [],
-      globalMatches: [], // { file, code, description, amount, snippet }
-      totalsBefore: {}
-    };
-
+    const totals = Object.fromEntries(Object.keys(wageMap).map(k => [k, 0]));
+    const debugDetails = [];
     let processedCount = 0;
 
-    // regex with lookahead to stop before next code/Deductions/end
-    const regex = /(\d{4})\s+([A-Za-z()/%\-\d\s]+?)\s+(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)(?=\s+\d{4}|\s+Deductions|$)/g;
+    console.clear();
+    console.group(`💼 Monthly Budget Debug (${month}/2025)`);
+    console.log(`Processing ${monthFiles.length} payslips...`);
 
     for (const url of monthFiles) {
-      const fileDebug = { url, matches: [] };
+      const slipName = url.split("/").pop();
+      const slipRows = [];
       try {
         const pdf = await pdfjsLib.getDocument(url).promise;
         let textContent = "";
@@ -102,75 +82,66 @@ document.addEventListener("DOMContentLoaded", function () {
           const text = await page.getTextContent();
           text.items.forEach(t => (textContent += t.str + " "));
         }
+
         textContent = textContent.replace(/\s+/g, " ").trim();
 
-        // optional: try to extract the "Pay and Allowances" block only to limit false matches
-        // Look for "Pay and Allowances" then upto "Deductions"
-        let payBlock = textContent;
-        const paIndex = textContent.search(/Pay and Allowances/i);
-        if (paIndex !== -1) {
-          // cut from Pay and Allowances until Deductions (if present)
-          const dedIndex = textContent.search(/Deductions\s*-\s*General/i);
-          if (dedIndex !== -1 && dedIndex > paIndex) {
-            payBlock = textContent.substring(paIndex, dedIndex);
-          } else {
-            payBlock = textContent.substring(paIndex);
+        const start = textContent.indexOf("Wage type");
+        const end = textContent.indexOf("Deductions");
+        const block = start !== -1 && end > start
+          ? textContent.slice(start, end)
+          : textContent;
+
+        const tokens = block.split(/\s+/);
+        let currentCode = null;
+
+        for (let i = 0; i < tokens.length; i++) {
+          const token = tokens[i];
+
+          if (/^\d{4}$/.test(token)) {
+            currentCode = token;
+            continue;
+          }
+
+          if (/^\d{1,3}(?:,\d{3})*(?:\.\d{2})?$/.test(token)) {
+            const amount = parseFloat(token.replace(/,/g, ""));
+            if (currentCode && wageMap[currentCode] && amount > 0) {
+              totals[currentCode] += amount;
+              slipRows.push({
+                code: currentCode,
+                description: wageMap[currentCode],
+                amount
+              });
+            }
+            currentCode = null;
           }
         }
 
-        // run regex on payBlock
-        let m;
-        while ((m = regex.exec(payBlock)) !== null) {
-          const code = m[1];
-          const description = m[2].trim().replace(/\s+/g, ' ');
-          const amountStr = m[3].replace(/,/g, "");
-          const amount = parseFloat(amountStr);
-          // snippet
-          const span = m.index;
-          const snippet = payBlock.substring(Math.max(0, span - 60), Math.min(payBlock.length, m.index + m[0].length + 60));
-          // record
-          fileDebug.matches.push({ code, description, amount, snippet });
-          debug.globalMatches.push({ file: url, code, description, amount, snippet });
-
-          // sum only allowed codes and positive amounts > 0.00
-          if (wageMap[code] && !isNaN(amount) && amount > 0) {
-            totals[code] = (totals[code] || 0) + amount;
-          }
-        }
-
-        debug.files.push(fileDebug);
+        const slipTotal = slipRows.reduce((a, b) => a + b.amount, 0);
+        debugDetails.push({ slipName, rows: slipRows, slipTotal });
         processedCount++;
+
+        console.groupCollapsed(`📄 ${slipName}`);
+        console.table(slipRows);
+        console.log("Subtotal:", slipTotal.toLocaleString("en-PK"));
+        console.groupEnd();
+
       } catch (err) {
-        console.warn(`⚠️ Skipped ${url}: ${err.message}`);
-        debug.files.push({ url, error: err.message, matches: [] });
+        console.warn(`⚠️ Skipped ${slipName}: ${err.message}`);
       }
     }
 
-    // Put totals snapshot in debug
-    debug.totalsAfter = JSON.parse(JSON.stringify(totals));
-
-    // console debug output (open developer console)
-    console.group("Payslip extraction debug");
-    console.log("Processed files:", processedCount);
-    console.table(totals);
-    console.log("Sample matches (first 40):", debug.globalMatches.slice(0, 40));
+    const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
+    console.group("📊 Combined Totals by Code");
+    const debugTotals = Object.entries(totals).map(([code, amt]) => ({
+      Code: code,
+      Description: wageMap[code],
+      Total: amt.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
+    }));
+    console.table(debugTotals);
+    console.groupEnd();
     console.groupEnd();
 
-    // prepare debug JSON for download
-    const debugBlob = new Blob([JSON.stringify(debug, null, 2)], { type: "application/json" });
-    downloadDebugBtn.onclick = () => {
-      const url = URL.createObjectURL(debugBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `debug_payslips_${month}_2025.json`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    };
-    downloadDebugBtn.style.display = "inline-block";
-
-    // --- Generate summary PDF ---
+    // --- Generate Main Budget PDF ---
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("p", "mm", "a4");
 
@@ -192,10 +163,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const rows = Object.entries(wageMap).map(([code, desc]) => [
       code,
       desc,
-      (totals[code] || 0).toLocaleString("en-PK", { minimumFractionDigits: 2 }),
+      totals[code].toLocaleString("en-PK", { minimumFractionDigits: 2 }),
     ]);
-
-    const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
     rows.push(["", "Total", totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })]);
 
     doc.autoTable({
@@ -203,13 +172,9 @@ document.addEventListener("DOMContentLoaded", function () {
       head: [["Wage Type", "Description", "Total (Rs)"]],
       body: rows,
       theme: "grid",
-      styles: { font: "times", fontSize: 10, halign: "center", valign: "middle" },
+      styles: { font: "times", fontSize: 10, halign: "center" },
       headStyles: { fillColor: [0, 74, 173], textColor: 255, fontStyle: "bold" },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 110, halign: "left" },
-        2: { cellWidth: 40, halign: "right" }
-      },
+      columnStyles: { 1: { halign: "left" }, 2: { halign: "right" } },
       margin: { left: 14, right: 14 },
     });
 
@@ -220,8 +185,52 @@ document.addEventListener("DOMContentLoaded", function () {
     doc.text("_________________________", 135, finalY);
     doc.text("Accountant", 35, finalY + 6);
     doc.text("Headmaster", 150, finalY + 6);
-
     doc.save(`Monthly_Budget_${month}_2025.pdf`);
-    status.textContent = `✅ Monthly budget generated successfully! (${processedCount} payslips processed). Debug JSON ready.`;
+
+    // --- Generate Debug PDF ---
+    const debugDoc = new jsPDF("p", "mm", "a4");
+    debugDoc.setFont("times", "bold");
+    debugDoc.setFontSize(13);
+    debugDoc.text(`DEBUG REPORT - Monthly Budget Details (${month}/2025)`, 105, 15, { align: "center" });
+    debugDoc.setFontSize(10);
+    let y = 25;
+
+    for (const slip of debugDetails) {
+      debugDoc.setFont("times", "bold");
+      debugDoc.text(`Payslip: ${slip.slipName}`, 14, y);
+      y += 5;
+
+      const slipRows = slip.rows.map(r => [
+        r.code,
+        r.description,
+        r.amount.toLocaleString("en-PK", { minimumFractionDigits: 2 }),
+      ]);
+
+      debugDoc.autoTable({
+        startY: y,
+        head: [["Code", "Description", "Amount (Rs)"]],
+        body: slipRows,
+        theme: "grid",
+        styles: { font: "times", fontSize: 9 },
+        columnStyles: { 1: { halign: "left" }, 2: { halign: "right" } },
+        margin: { left: 14, right: 14 },
+      });
+
+      y = debugDoc.lastAutoTable.finalY + 5;
+      debugDoc.text(`Subtotal: Rs ${slip.slipTotal.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`, 150, y, { align: "right" });
+      y += 10;
+
+      if (y > 260) {
+        debugDoc.addPage();
+        y = 20;
+      }
+    }
+
+    debugDoc.setFont("times", "bold");
+    debugDoc.setFontSize(11);
+    debugDoc.text(`Grand Total: Rs ${totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })}`, 150, y, { align: "right" });
+
+    debugDoc.save(`Monthly_Budget_Debug_${month}_2025.pdf`);
+    status.textContent = `✅ Both budget and debug PDFs generated successfully! (${processedCount} payslips processed)`;
   });
 });
