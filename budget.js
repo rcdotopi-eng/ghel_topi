@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
     doc.setFontSize(11);
     doc.text("_________________________", 25, finalY);
     doc.text("_________________________", 135, finalY);
-    doc.text("Accountant", 35, finalY + 6);
+    doc.text("Clerk", 35, finalY + 6);
     doc.text("Headmaster", 150, finalY + 6);
 
     doc.save(`Monthly_Budget_${month}_2025.pdf`);
