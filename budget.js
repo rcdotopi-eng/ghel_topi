@@ -1,19 +1,27 @@
 document.addEventListener("DOMContentLoaded", function () {
   const container = document.querySelector(".box");
 
-  // --- Add Budget Section ---
+  // --- Budget section ---
   const budgetSection = document.createElement("div");
   budgetSection.style.marginTop = "25px";
   budgetSection.innerHTML = `
     <hr style="margin: 20px 0;">
     <h3>📊 Monthly Budget Summary</h3>
-    <p>Select a month to automatically generate the school’s combined budget summary from all payslips in that folder.</p>
+    <p>Select a month to generate the school’s combined budget summary.</p>
     <select id="budgetMonth" style="padding: 10px; width: 80%; border-radius: 6px; margin-bottom: 10px;">
       <option value="">Select Month</option>
-      ${Array.from({ length: 12 }, (_, i) => {
-        const m = (i + 1).toString().padStart(2, "0");
-        return `<option value="${m}">${new Date(2025, i).toLocaleString("default", { month: "long" })}</option>`;
-      }).join("")}
+      <option value="01">January</option>
+      <option value="02">February</option>
+      <option value="03">March</option>
+      <option value="04">April</option>
+      <option value="05">May</option>
+      <option value="06">June</option>
+      <option value="07">July</option>
+      <option value="08">August</option>
+      <option value="09">September</option>
+      <option value="10">October</option>
+      <option value="11">November</option>
+      <option value="12">December</option>
     </select>
     <br>
     <button id="generateBudget" class="notice-btn">💰 Generate Monthly Budget PDF</button>
@@ -21,7 +29,7 @@ document.addEventListener("DOMContentLoaded", function () {
   `;
   container.appendChild(budgetSection);
 
-  // --- Wage Map ---
+  // --- Define allowed wage codes ---
   const wageMap = {
     "0001": "Basic Pay",
     "1000": "House Rent Allowance",
@@ -50,48 +58,24 @@ document.addEventListener("DOMContentLoaded", function () {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
-  // --- Helper: Fetch all PDFs dynamically ---
-  async function fetchPayslipList(month) {
-    const url = `payslips/2025/${month}/`;
-    const response = await fetch(url);
-    const text = await response.text();
-
-    // Try to extract all .pdf filenames from directory listing (works on GitHub Pages)
-    const pdfs = Array.from(text.matchAll(/href="([^"]+\.pdf)"/gi)).map(m => url + m[1]);
-    return pdfs;
-  }
-
-  // --- Generate Budget PDF ---
   document.getElementById("generateBudget").addEventListener("click", async function () {
     const month = document.getElementById("budgetMonth").value;
     const status = document.getElementById("status");
 
-    if (!month) {
-      alert("⚠️ Please select a month first.");
-      return;
-    }
+    if (!month) return alert("⚠️ Please select a month.");
+    if (typeof payslipFiles === "undefined" || !payslipFiles[month])
+      return alert("❌ Payslip file list not found.");
 
-    status.textContent = `🔍 Fetching payslips for ${month}/2025...`;
+    const monthFiles = payslipFiles[month];
+    if (!monthFiles.length) return alert(`❌ No payslips found for ${month}/2025.`);
 
-    let monthFiles = [];
-    try {
-     monthFiles = payslipFiles[month] || [];
+    status.textContent = `⏳ Reading ${monthFiles.length} payslips...`;
 
-    } catch (e) {
-      console.warn("⚠️ Could not fetch directory listing.", e);
-    }
-
-    if (!monthFiles || monthFiles.length === 0) {
-      alert(`❌ No payslips found in payslips/2025/${month}/`);
-      return;
-    }
-
-    status.textContent = `⏳ Processing ${monthFiles.length} payslips... please wait.`;
-
+    // Initialize totals
     const totals = {};
     for (const code in wageMap) totals[code] = 0;
+
     let processedCount = 0;
-    let skippedCount = 0;
 
     for (const url of monthFiles) {
       try {
@@ -101,11 +85,15 @@ document.addEventListener("DOMContentLoaded", function () {
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const text = await page.getTextContent();
-          text.items.forEach((t) => (textContent += t.str + " "));
+          text.items.forEach(t => (textContent += t.str + " "));
         }
 
-        const regex = /(\d{4})\s+[A-Za-z().%/ ]+?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
+        textContent = textContent.replace(/\s+/g, " ");
+
+        // Match pattern like: 2347 Adhoc Relief Allowance 15% (22 PS17) 6,941.00
+        const regex = /(\d{4})\s+[A-Za-z()/%\-.\d ]+?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
         let match;
+
         while ((match = regex.exec(textContent)) !== null) {
           const code = match[1];
           const amount = parseFloat(match[2].replace(/,/g, ""));
@@ -114,16 +102,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         processedCount++;
       } catch (err) {
-        skippedCount++;
         console.warn(`⚠️ Skipped ${url}: ${err.message}`);
       }
     }
 
-    // --- Generate final PDF ---
+    // --- Generate PDF ---
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const doc = new jsPDF("p", "mm", "a4");
 
-    doc.setFont('times', 'bold');
+    doc.setFont("times", "bold");
     doc.setFontSize(14);
     doc.text("GOVERNMENT OF AZAD JAMMU & KASHMIR", 105, 15, { align: "center" });
     doc.setFontSize(12);
@@ -131,12 +118,12 @@ document.addEventListener("DOMContentLoaded", function () {
     doc.setFontSize(11);
     doc.text(`Monthly Budget Summary for ${month}/2025`, 105, 30, { align: "center" });
     doc.setFontSize(9);
-    doc.text(`Processed Payslips: ${processedCount} | Skipped: ${skippedCount}`, 14, 38);
+    doc.text(`Processed Payslips: ${processedCount}`, 14, 38);
 
     const rows = Object.entries(wageMap).map(([code, desc]) => [
       code,
       desc,
-      totals[code] ? totals[code].toLocaleString("en-PK", { minimumFractionDigits: 2 }) : "0.00",
+      totals[code].toLocaleString("en-PK", { minimumFractionDigits: 2 }),
     ]);
 
     const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
@@ -149,19 +136,23 @@ document.addEventListener("DOMContentLoaded", function () {
       theme: "grid",
       styles: { font: "times", fontSize: 10, halign: "center", valign: "middle" },
       headStyles: { fillColor: [0, 74, 173], textColor: 255, fontStyle: "bold" },
-      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 110, halign: "left" }, 2: { cellWidth: 40, halign: "right" } },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 110, halign: "left" },
+        2: { cellWidth: 40, halign: "right" }
+      },
       margin: { left: 14, right: 14 },
     });
 
     let finalY = doc.lastAutoTable.finalY + 20;
-    doc.setFont('times', 'italic');
+    doc.setFont("times", "italic");
     doc.setFontSize(11);
     doc.text("_________________________", 25, finalY);
     doc.text("_________________________", 135, finalY);
-    doc.text("Clerk", 35, finalY + 6);
+    doc.text("Accountant", 35, finalY + 6);
     doc.text("Headmaster", 150, finalY + 6);
 
     doc.save(`Monthly_Budget_${month}_2025.pdf`);
-    status.textContent = `✅ Budget generated successfully! (${processedCount} processed, ${skippedCount} skipped)`;
+    status.textContent = `✅ Monthly budget generated successfully! (${processedCount} payslips processed)`;
   });
 });
