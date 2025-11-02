@@ -29,7 +29,7 @@ document.addEventListener("DOMContentLoaded", function () {
   `;
   container.appendChild(budgetSection);
 
-  // --- Define allowed wage codes ---
+  // --- Allowed wage codes ---
   const wageMap = {
     "0001": "Basic Pay",
     "1000": "House Rent Allowance",
@@ -58,6 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
+  // --- Click handler ---
   document.getElementById("generateBudget").addEventListener("click", async function () {
     const month = document.getElementById("budgetMonth").value;
     const status = document.getElementById("status");
@@ -82,22 +83,27 @@ document.addEventListener("DOMContentLoaded", function () {
         const pdf = await pdfjsLib.getDocument(url).promise;
         let textContent = "";
 
+        // Combine all text from PDF pages
         for (let i = 1; i <= pdf.numPages; i++) {
           const page = await pdf.getPage(i);
           const text = await page.getTextContent();
           text.items.forEach(t => (textContent += t.str + " "));
         }
 
+        // Normalize spaces
         textContent = textContent.replace(/\s+/g, " ");
 
-        // Match pattern like: 2347 Adhoc Relief Allowance 15% (22 PS17) 6,941.00
-        const regex = /(\d{4})\s+[A-Za-z()/%\-.\d ]+?(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)/g;
-        let match;
+        // ✅ Improved regex to match correct code–amount pairs
+        const regex =
+          /(\d{4})\s+([A-Za-z()/%.\-\d\s]+?)\s+(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)(?=\s+\d{4}|\s+Deductions|$)/g;
 
+        let match;
         while ((match = regex.exec(textContent)) !== null) {
           const code = match[1];
-          const amount = parseFloat(match[2].replace(/,/g, ""));
-          if (wageMap[code]) totals[code] += amount;
+          const amount = parseFloat(match[3].replace(/,/g, ""));
+          if (wageMap[code] && amount > 0) {
+            totals[code] += amount;
+          }
         }
 
         processedCount++;
@@ -106,7 +112,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    // --- Generate PDF ---
+    // --- Generate summary PDF ---
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF("p", "mm", "a4");
 
@@ -114,12 +120,18 @@ document.addEventListener("DOMContentLoaded", function () {
     doc.setFontSize(14);
     doc.text("GOVERNMENT OF AZAD JAMMU & KASHMIR", 105, 15, { align: "center" });
     doc.setFontSize(12);
-    doc.text("SARDAR SHAH MOHAMMAD KHAN LATE GOVT. BOYS HIGH SCHOOL, GHEL TOPI (BAGH)", 105, 22, { align: "center" });
+    doc.text(
+      "SARDAR SHAH MOHAMMAD KHAN LATE GOVT. BOYS HIGH SCHOOL, GHEL TOPI (BAGH)",
+      105,
+      22,
+      { align: "center" }
+    );
     doc.setFontSize(11);
     doc.text(`Monthly Budget Summary for ${month}/2025`, 105, 30, { align: "center" });
     doc.setFontSize(9);
     doc.text(`Processed Payslips: ${processedCount}`, 14, 38);
 
+    // Prepare table rows
     const rows = Object.entries(wageMap).map(([code, desc]) => [
       code,
       desc,
@@ -144,6 +156,7 @@ document.addEventListener("DOMContentLoaded", function () {
       margin: { left: 14, right: 14 },
     });
 
+    // Signatures
     let finalY = doc.lastAutoTable.finalY + 20;
     doc.setFont("times", "italic");
     doc.setFontSize(11);
@@ -152,6 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
     doc.text("Accountant", 35, finalY + 6);
     doc.text("Headmaster", 150, finalY + 6);
 
+    // Save
     doc.save(`Monthly_Budget_${month}_2025.pdf`);
     status.textContent = `✅ Monthly budget generated successfully! (${processedCount} payslips processed)`;
   });
