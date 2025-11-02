@@ -7,21 +7,13 @@ document.addEventListener("DOMContentLoaded", function () {
   budgetSection.innerHTML = `
     <hr style="margin: 20px 0;">
     <h3>📊 Monthly Budget Summary</h3>
-    <p>Select a month to generate the school’s combined budget summary (official format).</p>
+    <p>Select a month to automatically generate the school’s combined budget summary from all payslips in that folder.</p>
     <select id="budgetMonth" style="padding: 10px; width: 80%; border-radius: 6px; margin-bottom: 10px;">
       <option value="">Select Month</option>
-      <option value="01">January</option>
-      <option value="02">February</option>
-      <option value="03">March</option>
-      <option value="04">April</option>
-      <option value="05">May</option>
-      <option value="06">June</option>
-      <option value="07">July</option>
-      <option value="08">August</option>
-      <option value="09">September</option>
-      <option value="10">October</option>
-      <option value="11">November</option>
-      <option value="12">December</option>
+      ${Array.from({ length: 12 }, (_, i) => {
+        const m = (i + 1).toString().padStart(2, "0");
+        return `<option value="${m}">${new Date(2025, i).toLocaleString("default", { month: "long" })}</option>`;
+      }).join("")}
     </select>
     <br>
     <button id="generateBudget" class="notice-btn">💰 Generate Monthly Budget PDF</button>
@@ -58,6 +50,17 @@ document.addEventListener("DOMContentLoaded", function () {
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
 
+  // --- Helper: Fetch all PDFs dynamically ---
+  async function fetchPayslipList(month) {
+    const url = `payslips/2025/${month}/`;
+    const response = await fetch(url);
+    const text = await response.text();
+
+    // Try to extract all .pdf filenames from directory listing (works on GitHub Pages)
+    const pdfs = Array.from(text.matchAll(/href="([^"]+\.pdf)"/gi)).map(m => url + m[1]);
+    return pdfs;
+  }
+
   // --- Generate Budget PDF ---
   document.getElementById("generateBudget").addEventListener("click", async function () {
     const month = document.getElementById("budgetMonth").value;
@@ -68,9 +71,17 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    const monthFiles = payslipFiles[month];
+    status.textContent = `🔍 Fetching payslips for ${month}/2025...`;
+
+    let monthFiles = [];
+    try {
+      monthFiles = await fetchPayslipList(month);
+    } catch (e) {
+      console.warn("⚠️ Could not fetch directory listing.", e);
+    }
+
     if (!monthFiles || monthFiles.length === 0) {
-      alert(`❌ No payslip files defined for month ${month}.`);
+      alert(`❌ No payslips found in payslips/2025/${month}/`);
       return;
     }
 
@@ -78,7 +89,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const totals = {};
     for (const code in wageMap) totals[code] = 0;
-
     let processedCount = 0;
     let skippedCount = 0;
 
@@ -108,11 +118,10 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    // --- Create PDF ---
+    // --- Generate final PDF ---
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
 
-    // --- Header ---
     doc.setFont('times', 'bold');
     doc.setFontSize(14);
     doc.text("GOVERNMENT OF AZAD JAMMU & KASHMIR", 105, 15, { align: "center" });
@@ -120,12 +129,9 @@ document.addEventListener("DOMContentLoaded", function () {
     doc.text("SARDAR SHAH MOHAMMAD KHAN LATE GOVT. BOYS HIGH SCHOOL, GHEL TOPI (BAGH)", 105, 22, { align: "center" });
     doc.setFontSize(11);
     doc.text(`Monthly Budget Summary for ${month}/2025`, 105, 30, { align: "center" });
-
-    // --- Process Info ---
     doc.setFontSize(9);
     doc.text(`Processed Payslips: ${processedCount} | Skipped: ${skippedCount}`, 14, 38);
 
-    // --- Table Data ---
     const rows = Object.entries(wageMap).map(([code, desc]) => [
       code,
       desc,
@@ -135,7 +141,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const totalSum = Object.values(totals).reduce((a, b) => a + b, 0);
     rows.push(["", "Total", totalSum.toLocaleString("en-PK", { minimumFractionDigits: 2 })]);
 
-    // --- Table ---
     doc.autoTable({
       startY: 42,
       head: [["Wage Type", "Description", "Total (Rs)"]],
@@ -143,24 +148,18 @@ document.addEventListener("DOMContentLoaded", function () {
       theme: "grid",
       styles: { font: "times", fontSize: 10, halign: "center", valign: "middle" },
       headStyles: { fillColor: [0, 74, 173], textColor: 255, fontStyle: "bold" },
-      columnStyles: {
-        0: { cellWidth: 25 },
-        1: { cellWidth: 110, halign: "left" },
-        2: { cellWidth: 40, halign: "right" }
-      },
+      columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 110, halign: "left" }, 2: { cellWidth: 40, halign: "right" } },
       margin: { left: 14, right: 14 },
     });
 
-    // --- Footer: Signatures ---
     let finalY = doc.lastAutoTable.finalY + 20;
     doc.setFont('times', 'italic');
     doc.setFontSize(11);
     doc.text("_________________________", 25, finalY);
     doc.text("_________________________", 135, finalY);
-    doc.text("Clerk", 35, finalY + 6);
+    doc.text("Accountant", 35, finalY + 6);
     doc.text("Headmaster", 150, finalY + 6);
 
-    // --- Save PDF ---
     doc.save(`Monthly_Budget_${month}_2025.pdf`);
     status.textContent = `✅ Budget generated successfully! (${processedCount} processed, ${skippedCount} skipped)`;
   });
