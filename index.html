@@ -235,14 +235,15 @@ function downloadPayslip() {
   });
 }
 </script>
-
-
+<script>
 function showNotice() {
   document.getElementById("noticeModal").style.display = "block";
 }
+
 function closeNotice() {
   document.getElementById("noticeModal").style.display = "none";
 }
+
 window.onclick = function(event) {
   const modal = document.getElementById("noticeModal");
   if (event.target === modal) {
@@ -250,6 +251,9 @@ window.onclick = function(event) {
   }
 };
 </script>
+
+
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
