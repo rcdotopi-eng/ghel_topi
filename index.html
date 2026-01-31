@@ -158,6 +158,13 @@
 
     <input type="text" id="pnum" placeholder="Enter Personal Number (e.g. 909999)">
     <br>
+    <select id="year">
+  <option value="">Select Year</option>
+  <option value="2025">2025</option>
+  <option value="2024">2024</option>
+  <option value="2023">2023</option>
+</select>
+<br>
     <select id="month">
       <option value="">Select Month</option>
       <option value="01">January</option>
@@ -197,11 +204,18 @@
 <script>
 function downloadPayslip() {
   const num = document.getElementById('pnum').value.trim();
+  const year = document.getElementById('year').value.trim();
   const month = document.getElementById('month').value.trim();
   const msg = document.getElementById('msg');
+
   msg.innerText = "";
+
   if (!num) {
     msg.innerText = "⚠️ Please enter your personal number.";
+    return;
+  }
+  if (!year) {
+    msg.innerText = "⚠️ Please select a year.";
     return;
   }
   if (!month) {
@@ -209,17 +223,20 @@ function downloadPayslip() {
     return;
   }
 
-  const url = 'payslips/2025/' + month + '/' + num + '.pdf';
+  const url = 'payslips/' + year + '/' + month + '/' + num + '.pdf';
+
   fetch(url).then(r => {
     if (r.ok) {
       window.open(url, '_blank');
     } else {
-      msg.innerText = "❌ Payslip not found for that month.";
+      msg.innerText = "❌ Payslip not found for selected year & month.";
     }
   }).catch(() => {
     msg.innerText = "⚠️ Error opening payslip. Please try again.";
   });
 }
+</script>
+
 
 function showNotice() {
   document.getElementById("noticeModal").style.display = "block";
