@@ -209,48 +209,36 @@ function downloadPayslip() {
 
   msg.innerText = "";
 
-  if (!num) {
-    msg.innerText = "⚠️ Please enter your personal number.";
-    return;
-  }
-  if (!year) {
-    msg.innerText = "⚠️ Please select a year.";
-    return;
-  }
-  if (!month) {
-    msg.innerText = "⚠️ Please select a month.";
-    return;
-  }
+  if (!num) { msg.innerText = "⚠️ Please enter your personal number."; return; }
+  if (!year) { msg.innerText = "⚠️ Please select a year."; return; }
+  if (!month) { msg.innerText = "⚠️ Please select a month."; return; }
 
   const url = 'payslips/' + year + '/' + month + '/' + num + '.pdf';
 
   fetch(url).then(r => {
-    if (r.ok) {
-      window.open(url, '_blank');
-    } else {
-      msg.innerText = "❌ Payslip not found for selected year & month.";
-    }
+    if (r.ok) window.open(url, '_blank');
+    else msg.innerText = "❌ Payslip not found for selected year & month.";
   }).catch(() => {
     msg.innerText = "⚠️ Error opening payslip. Please try again.";
   });
 }
 </script>
+
 <script>
 function showNotice() {
   document.getElementById("noticeModal").style.display = "block";
 }
-
 function closeNotice() {
   document.getElementById("noticeModal").style.display = "none";
 }
-
 window.onclick = function(event) {
   const modal = document.getElementById("noticeModal");
-  if (event.target === modal) {
-    modal.style.display = "none";
-  }
+  if (event.target === modal) modal.style.display = "none";
 };
 </script>
+
+<script src="payslips.js"></script>
+</body>
 
 
 
